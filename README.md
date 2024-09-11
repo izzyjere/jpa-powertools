@@ -1,4 +1,4 @@
-# Feature Parity with JPA Buddy
+# Feature Proposal
 
 ### Entity Generation
 - Allow users to generate JPA entities from database tables or existing classes.
