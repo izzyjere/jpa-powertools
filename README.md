@@ -1,71 +1,42 @@
-# jpa-powertools README
+# Feature Parity with JPA Buddy
 
-This is the README for your extension "jpa-powertools". After writing up a brief description, we recommend including the following sections.
+### Entity Generation
+- Allow users to generate JPA entities from database tables or existing classes.
 
-## Features
+### Entity-to-Table Mapping
+- Implement tools to assist in configuring the mappings between entities and database tables, including annotations like `@Entity`, `@Table`, `@OneToMany`, etc.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+### JPQL Query Generation
+- Add the ability to generate or validate JPQL (Java Persistence Query Language) queries.
 
-For example if there is an image subfolder under your extension project workspace:
+### Migration Scripts
+- Implement tools to assist in generating database migration scripts (similar to Flyway or Liquibase).
 
-\!\[feature X\]\(images/feature-x.png\)
+### Validation & Code Generation
+- Offer validation for entity classes and automatic generation of getters/setters, constructors, etc.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
-
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+### Reverse Engineering
+- Add reverse engineering from database tables to generate entities or repositories.
 
 ---
 
-## Following extension guidelines
+# Backend Components
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+### Entity Generation Engine
+- Use a Java process (possibly leveraging a Maven/Gradle task) to handle the JPA entity generation and reverse engineering.
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+### Database Connectivity
+- Use JDBC or another database library to connect to databases and fetch schema details.
 
-## Working with Markdown
+### Query Validation and Execution
+- Add backend code to validate and optionally execute JPQL queries.
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+---
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+# Frontend Integration
 
-## For more information
+### Database Schema & Entity Mapping UI
+- Provide a UI for browsing the database schema, creating JPA entities, and mapping relationships. We are using the VS Code Webview API for this.
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+### Command Palette Integration
+- Implement a command palette for JPA-related commands like "Generate Entity from Table," "Generate JPQL Query," etc.
