@@ -1,15 +1,14 @@
 import * as https from 'https';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as vscode from 'vscode';
 
 export function downloadJDBCDriver(dbType: string, destinationPath: string): Promise<void> {
     return new Promise((resolve, reject) => {
         const driverUrls : { [key: string]: string } = {
-            'mysql': 'https://example.com/mysql-driver.jar',
-            'postgresql': 'https://example.com/postgresql-driver.jar',
-            'oracle': 'https://example.com/oracle-driver.jar',
-	    'sqlserver': 'https://example.com/sqlserver-driver.jar'
+            'mysql': '',
+            'postgresql': '',
+            'oracle': '',
+	        'sqlserver': ''
         };
 
         const url : string = driverUrls[dbType];

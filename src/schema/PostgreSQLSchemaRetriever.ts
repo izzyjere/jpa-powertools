@@ -1,7 +1,9 @@
-import { DataSource, QueryRunner } from 'typeorm';
+import { DataSource } from '../db/DataSource';
+import { QueryRunner } from "../db/QueryRunner";
+import { DatabaseSchemaRetriever } from './DatabaseSchemaRetriever';
 import { TableMetadata } from './model/TableMetadata';
 
-export class PostgreSQLSchemaRetriever {
+export class PostgreSQLSchemaRetriever implements DatabaseSchemaRetriever {
     private queryRunner: QueryRunner;
 
     constructor(dataSource: DataSource) {
@@ -9,7 +11,7 @@ export class PostgreSQLSchemaRetriever {
     }
 
     async getTableNames(): Promise<string[]> {
-        await this.queryRunner.connect(); // Ensure the connection is established
+        await this.queryRunner.connect(); 
         try {
             const query = `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`;
             const result = await this.queryRunner.query(query);
@@ -18,12 +20,12 @@ export class PostgreSQLSchemaRetriever {
         } catch (err) {
             throw new Error(`Error retrieving tables: ${err}`);
         } finally {
-            await this.queryRunner.release(); // Release the query runner
+            await this.queryRunner.release(); 
         }
     }
 
     async getTableMetadata(tableName: string): Promise<TableMetadata[]> {
-        await this.queryRunner.connect(); // Ensure the connection is established
+        await this.queryRunner.connect(); 
         try {
             const query = `SELECT column_name, data_type, character_maximum_length, is_nullable, is_identity FROM information_schema.columns WHERE table_name = '${tableName}'`;
             const result = await this.queryRunner.query(query);
