@@ -232,7 +232,7 @@
     "@types/mocha": "^10.0.7",
     "@types/mssql": "^9.1.11",
     "@types/node": "^20.19.43",
-    "@types/oracledb": "^6.10.4",
+    "@types/oracledb": "^26.0.1",
     "@types/pg": "^8.23.1",
     "@types/vscode": "^1.54.0",
     "@typescript-eslint/eslint-plugin": "^8.3.0",
@@ -247,7 +247,7 @@
   "dependencies": {
     "mssql": "^11.0.2",
     "mysql2": "^3.24.6",
-    "oracledb": "^6.10.0",
+    "oracledb": "^26.0.0",
     "pg": "^8.23.1",
     "yaml": "^2.9.1"
   },
