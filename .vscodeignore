@@ -13,3 +13,5 @@ vsc-extension-quickstart.md
 **/eslint.config.mjs
 **/.vscode-test.*
 .github/**
+docs/**
+.demo/**

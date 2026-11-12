@@ -225,7 +225,8 @@
     "test:libs": "npm run compile && node scripts/fetch-test-libs.js",
     "package": "vsce package --skip-license",
     "test:dbs:up": "bash scripts/test-dbs.sh up",
-    "test:dbs:down": "bash scripts/test-dbs.sh down pg mysql maria mssql oracle db2"
+    "test:dbs:down": "bash scripts/test-dbs.sh down pg mysql maria mssql oracle db2",
+    "demo:record": "npm run compile && node scripts/record-demo.js"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.7",

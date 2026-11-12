@@ -8,3 +8,4 @@ node_modules
 test-db/lib/
 .vscode-test/
 *.vsix
+.demo/

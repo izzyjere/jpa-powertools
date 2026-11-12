@@ -1,5 +1,10 @@
 # JPA Power Tools
 
+<p align="center">
+  <a href="docs/media/demo.mp4"><img src="docs/media/demo-poster.png" alt="Watch the 1:30 demo of JPA Power Tools" width="860"></a>
+  <br><sub>▶ <a href="docs/media/demo.mp4">Watch the 1:30 demo</a></sub>
+</p>
+
 Browse your database from VS Code, generate JPA entities and Spring Data repositories from its tables, and write JPQL with validation, completion and navigation against your entity model.
 
 ## Features
@@ -97,7 +102,7 @@ npm run test:db
 npm run test:dbs:down
 ```
 
-`test-db/webview-harness.html` previews the webviews in a normal browser, with VS Code theme variables and a mock extension host (instructions are in the file).
+`npm run demo:record` re-records the demo video in `docs/media` (Windows, ffmpeg and the test databases required; see [scripts/record-demo.js](scripts/record-demo.js)). `test-db/webview-harness.html` previews the webviews in a normal browser, with VS Code theme variables and a mock extension host (instructions are in the file).
 
 ## Continuous integration and releases
 
