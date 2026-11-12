@@ -1,5 +1,15 @@
 # Change Log
 
+## 0.2.0
+
+- JPQL support in `@Query`, `@NamedQuery` and `createQuery(…)`:
+  - Validation against the workspace's entities, with "did you mean" quick fixes.
+  - `@Param` binding checks, completion, hover and go-to-definition.
+- **Convert to @Query** refactoring for Spring Data derived query methods.
+- **Generate JPQL Query…** builder that adds a complete `@Query` repository method.
+- Database drivers load on first connection, so opening Java files stays fast.
+- CI on Linux, Windows and macOS with real databases, and tag-based publishing to the Visual Studio Marketplace and Open VSX.
+
 ## 0.1.0
 
 First working release.

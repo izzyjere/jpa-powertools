@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      db2:
+        description: Also test against IBM Db2 (adds ~10 minutes)
+        type: boolean
+        default: false
+  schedule:
+    # Weekly full run, including Db2
+    - cron: '0 3 * * 1'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Cache VS Code test instance
+        uses: actions/cache@v4
+        with:
+          path: .vscode-test
+          key: vscode-test-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: vscode-test-${{ runner.os }}-
+
+      - name: VS Code integration tests
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm test
+
+      - name: VS Code integration tests
+        if: runner.os != 'Linux'
+        run: npm test
+
+  databases:
+    name: Databases
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      - run: npm run compile
+
+      - name: Cache test libraries (Hibernate, JDBC drivers)
+        uses: actions/cache@v4
+        with:
+          path: test-db/lib
+          key: test-libs-${{ hashFiles('scripts/fetch-test-libs.js') }}
+
+      - name: Download test libraries
+        run: node scripts/fetch-test-libs.js
+
+      - name: Start and seed databases
+        run: |
+          dbs="pg mysql maria mssql oracle"
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.db2 }}" = "true" ]; then
+            dbs="$dbs db2"
+          fi
+          bash scripts/test-dbs.sh up $dbs
+
+      - name: Database and JPQL tests
+        run: npx mocha --ui tdd --timeout 300000 "out/test/db/**/*.test.js"
+
+      - name: VS Code integration tests with a live database
+        run: xvfb-run -a npm test
+
+      - name: Database logs
+        if: failure()
+        run: for c in $(docker ps -a --format '{{.Names}}' | grep '^jpt-'); do echo "::group::$c"; docker logs --tail 200 "$c"; echo "::endgroup::"; done
+
+  package:
+    name: Package
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Package extension
+        run: npm run package -- --out jpa-powertools.vsix
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jpa-powertools-vsix
+          path: jpa-powertools.vsix
+          if-no-files-found: error

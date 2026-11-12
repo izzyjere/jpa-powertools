@@ -1,8 +1,8 @@
 {
   "name": "jpa-powertools",
   "displayName": "JPA Power Tools",
-  "description": "Browse PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, Db2 and other JDBC databases and generate JPA entities and Spring Data repositories from their tables.",
-  "version": "0.1.0",
+  "description": "Browse PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, Db2 and other JDBC databases, generate JPA entities and Spring Data repositories, and write JPQL with validation, completion and navigation.",
+  "version": "0.2.0",
   "engines": {
     "vscode": "^1.93.0"
   },
@@ -11,7 +11,9 @@
     "Snippets",
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:java"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -86,6 +88,17 @@
         "title": "Generate JPA Entities…",
         "category": "JPA Power Tools",
         "icon": "$(symbol-class)"
+      },
+      {
+        "command": "jpaPowertools.generateJpql",
+        "title": "Generate JPQL Query…",
+        "category": "JPA Power Tools",
+        "icon": "$(symbol-operator)"
+      },
+      {
+        "command": "jpaPowertools.convertToQuery",
+        "title": "Convert Derived Query to @Query",
+        "category": "JPA Power Tools"
       }
     ],
     "menus": {
@@ -104,6 +117,10 @@
         },
         {
           "command": "jpaPowertools.copyJdbcUrl",
+          "when": "false"
+        },
+        {
+          "command": "jpaPowertools.convertToQuery",
           "when": "false"
         }
       ],
@@ -170,6 +187,13 @@
           "when": "view == jpaPowertools.explorer && viewItem =~ /^connection/",
           "group": "3_manage@2"
         }
+      ],
+      "editor/context": [
+        {
+          "command": "jpaPowertools.generateJpql",
+          "when": "editorLangId == java",
+          "group": "1_modification@90"
+        }
       ]
     },
     "configuration": {
@@ -180,6 +204,11 @@
           "default": "",
           "scope": "machine",
           "markdownDescription": "Java 11+ installation used for JDBC-based databases (Db2, H2, HSQLDB, Derby, SQLite, Firebird, generic JDBC). Defaults to `JAVA_HOME`, then `java` on the `PATH`."
+        },
+        "jpaPowertools.jpql.validation": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Check JPQL in `@Query`, `@NamedQuery` and `createQuery(…)` against the `@Entity` classes in the workspace."
         }
       }
     }
@@ -194,7 +223,9 @@
     "test:db": "npm run compile && mocha --ui tdd --timeout 120000 \"out/test/db/**/*.test.js\"",
     "test": "vscode-test",
     "test:libs": "npm run compile && node scripts/fetch-test-libs.js",
-    "package": "vsce package"
+    "package": "vsce package --skip-license",
+    "test:dbs:up": "bash scripts/test-dbs.sh up",
+    "test:dbs:down": "bash scripts/test-dbs.sh down pg mysql maria mssql oracle db2"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.7",
@@ -207,6 +238,7 @@
     "@typescript-eslint/parser": "^8.3.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^3.9.2",
     "eslint": "^9.9.1",
     "mocha": "^10.8.2",
     "typescript": "^5.9.3"
@@ -234,6 +266,18 @@
     "oracle",
     "sql server",
     "db2",
-    "jdbc"
-  ]
+    "jdbc",
+    "jpql",
+    "hql",
+    "query"
+  ],
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e3a8a",
+    "theme": "dark"
+  },
+  "homepage": "https://github.com/izzyjere/jpa-powertools#readme",
+  "bugs": {
+    "url": "https://github.com/izzyjere/jpa-powertools/issues"
+  }
 }

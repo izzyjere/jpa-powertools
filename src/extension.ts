@@ -3,6 +3,7 @@ import { ConnectionStore } from './connections/ConnectionStore';
 import { JdbcEnvironment } from './connections/JdbcEnvironment';
 import { SessionManager } from './connections/SessionManager';
 import { buildJdbcUrl } from './db/jdbcUrl';
+import { JpqlService } from './jpql/JpqlService';
 import { ConnectionConfig } from './model/types';
 import { findSpringDatasources } from './project/projectScanner';
 import { ConnectionNode, DatabaseExplorer, ExplorerNode, SchemaNode, TableNode } from './views/DatabaseExplorer';
@@ -15,6 +16,7 @@ export interface JpaPowerToolsApi {
   sessions: SessionManager;
   explorer: DatabaseExplorer;
   view: vscode.TreeView<ExplorerNode>;
+  jpql: JpqlService;
 }
 
 export function activate(context: vscode.ExtensionContext): JpaPowerToolsApi {
@@ -22,6 +24,7 @@ export function activate(context: vscode.ExtensionContext): JpaPowerToolsApi {
   const jdbc = new JdbcEnvironment(context);
   const sessions = new SessionManager(store, jdbc);
   const explorer = new DatabaseExplorer(store, sessions);
+  const jpql = new JpqlService();
   const view = vscode.window.createTreeView('jpaPowertools.explorer', {
     treeDataProvider: explorer,
     canSelectMany: true,
@@ -78,7 +81,7 @@ export function activate(context: vscode.ExtensionContext): JpaPowerToolsApi {
   };
 
   context.subscriptions.push(
-    view, store, explorer, sessions,
+    view, store, explorer, sessions, jpql,
     store.onDidChange(updateContext),
 
     vscode.commands.registerCommand('jpaPowertools.addConnection', () => {
@@ -198,7 +201,7 @@ export function activate(context: vscode.ExtensionContext): JpaPowerToolsApi {
     }
   }
 
-  return { store, sessions, explorer, view };
+  return { store, sessions, explorer, view, jpql };
 }
 
 export function deactivate(): void {

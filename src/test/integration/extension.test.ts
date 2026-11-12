@@ -72,7 +72,7 @@ suite('JPA Power Tools in VS Code', () => {
     const project = await scanProject();
     assert.strictEqual(project.roots.length, 1);
     assert.strictEqual(project.roots[0].basePackage, 'com.acme.shop');
-    assert.strictEqual(project.roots[0].entityPackage, 'com.acme.shop.entity');
+    assert.strictEqual(project.roots[0].entityPackage, 'com.acme.shop.domain', 'prefers the existing domain package');
     assert.strictEqual(project.persistenceApi, 'jakarta');
     assert.strictEqual(project.lombok, true);
     assert.strictEqual(project.springDataJpa, true);
@@ -150,7 +150,7 @@ suite('JPA Power Tools in VS Code', () => {
       await vscode.commands.executeCommand('jpaPowertools.generateEntities', publicSchema);
       const panel = await waitFor(() => GeneratorPanel.panels()[0]);
       const init = await waitFor(() => panel.lastPosted.get('init') as { options: UiOptions; tables: Array<{ name: string }> } | undefined, 30_000);
-      assert.strictEqual(init.options.entityPackage, 'com.acme.shop.entity');
+      assert.strictEqual(init.options.entityPackage, 'com.acme.shop.domain');
       assert.strictEqual(init.options.lombok, true);
       assert.ok(init.tables.length >= 8);
       await sleep(2500);
@@ -168,12 +168,12 @@ suite('JPA Power Tools in VS Code', () => {
       const result = await waitFor(() => panel.lastPosted.get('generated') as { written: string[] } | undefined);
       assert.strictEqual(result.written.length, preview.files.length);
 
-      const order = fs.readFileSync(path.join(out, 'com/acme/shop/entity/Order.java'), 'utf8');
+      const order = fs.readFileSync(path.join(out, 'com/acme/shop/domain/Order.java'), 'utf8');
       assert.match(order, /@ManyToOne\(fetch = FetchType\.LAZY, optional = false\)\s+@JoinColumn\(name = "customer_id", nullable = false\)\s+private Customer customer;/);
       assert.match(order, /@OneToMany\(mappedBy = "order"\)/);
       const repo = fs.readFileSync(path.join(out, 'com/acme/shop/repository/OrderItemRepository.java'), 'utf8');
       assert.match(repo, /extends JpaRepository<OrderItem, OrderItemId>/);
-      assert.ok(fs.existsSync(path.join(out, 'com/acme/shop/entity/OrderItemId.java')));
+      assert.ok(fs.existsSync(path.join(out, 'com/acme/shop/domain/OrderItemId.java')));
       await sleep(1500);
       screenshot('05-generated');
     });
