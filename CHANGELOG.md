@@ -1,5 +1,13 @@
 # Change Log
 
+## 1.0.0
+
+First stable release on the Visual Studio Marketplace.
+
+- Released under the MIT license.
+- A 1:30 demo video in the README showing connections, entity generation and JPQL support.
+- CI now runs on Node 22 and the VS Code integration tests launch on macOS again (VS Code 1.110+ renamed the macOS executable).
+
 ## 0.2.0
 
 - JPQL support in `@Query`, `@NamedQuery` and `createQuery(…)`:

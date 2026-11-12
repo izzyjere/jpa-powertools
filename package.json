@@ -2,7 +2,7 @@
   "name": "jpa-powertools",
   "displayName": "JPA Power Tools",
   "description": "Browse PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, Db2 and other JDBC databases, generate JPA entities and Spring Data repositories, and write JPQL with validation, completion and navigation.",
-  "version": "v1.0.0-dev",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.93.0"
   },
@@ -237,8 +237,8 @@
     "@types/vscode": "^1.54.0",
     "@typescript-eslint/eslint-plugin": "^8.3.0",
     "@typescript-eslint/parser": "^8.3.0",
-    "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.2",
     "eslint": "^9.9.1",
     "mocha": "^10.8.2",
