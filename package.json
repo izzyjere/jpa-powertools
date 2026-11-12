@@ -223,7 +223,7 @@
     "test:db": "npm run compile && mocha --ui tdd --timeout 120000 \"out/test/db/**/*.test.js\"",
     "test": "vscode-test",
     "test:libs": "npm run compile && node scripts/fetch-test-libs.js",
-    "package": "vsce package --skip-license",
+    "package": "vsce package",
     "test:dbs:up": "bash scripts/test-dbs.sh up",
     "test:dbs:down": "bash scripts/test-dbs.sh down pg mysql maria mssql oracle db2",
     "demo:record": "npm run compile && node scripts/record-demo.js"
@@ -252,6 +252,7 @@
     "yaml": "^2.9.1"
   },
   "publisher": "izzyjere",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/izzyjere/jpa-powertools"

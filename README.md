@@ -124,3 +124,7 @@ These items from the original proposal aren't built yet:
 - Migration script generation (Flyway/Liquibase)
 - Entity-to-table drift checks for existing entity classes
 - Generating Java `enum`s from database enum types
+
+## License
+
+[MIT](LICENSE) © Wisdom Jere
