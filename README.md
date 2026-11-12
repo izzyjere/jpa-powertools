@@ -7,6 +7,12 @@
 
 Browse your database from VS Code, generate JPA entities and Spring Data repositories from its tables, and write JPQL with validation, completion and navigation against your entity model.
 
+## Download 
+
+Via Visual Studio Marketplace:
+
+<a href="https://marketplace.visualstudio.com/items?itemName=izzyjere.jpa-powertools" target = "_blank">Download</a>
+
 ## Features
 
 - **Database explorer**: an activity-bar view with connections → schemas → tables → columns, showing primary keys, foreign keys, types, nullability and comments.
