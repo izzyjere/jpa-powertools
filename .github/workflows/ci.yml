@@ -47,7 +47,7 @@ jobs:
         run: npm run test:unit
 
       - name: Cache VS Code test instance
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .vscode-test
           key: vscode-test-${{ runner.os }}-${{ github.run_id }}
@@ -83,7 +83,7 @@ jobs:
       - run: npm run compile
 
       - name: Cache test libraries (Hibernate, JDBC drivers)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: test-db/lib
           key: test-libs-${{ hashFiles('scripts/fetch-test-libs.js') }}
