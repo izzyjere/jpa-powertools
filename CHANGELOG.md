@@ -1,9 +1,10 @@
 # Change Log
 
-All notable changes to the "jpa-powertools" extension will be documented in this file.
+## 0.1.0
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+First working release.
 
-## [Unreleased]
-
-- Initial release
+- Database explorer view: connections, schemas, tables and columns, with key and type details.
+- Connection form with JDBC URL paste, Spring `application.properties`/`.yml` import, Test Connection and passwords in Secret Storage.
+- Built-in drivers for PostgreSQL, MySQL, MariaDB, SQL Server and Oracle. JDBC bridge (Java 11+) for Db2, H2, HSQLDB, Derby, SQLite, Firebird and any JDBC driver, with checksum-verified driver downloads.
+- Entity generation wizard with live preview: associations from foreign keys, composite keys via `@IdClass`, identity columns, `@Version`, Lombok, jakarta/javax, Spring Data repositories, and project auto-detection.

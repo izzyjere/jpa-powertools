@@ -1,41 +1,239 @@
 {
   "name": "jpa-powertools",
-  "displayName": "Jpa Power Tools",
-  "description": "JPA PowerTools brings powerful, easy-to-use tools for working with Java Persistence API (JPA) directly in Visual Studio Code. Simplify the development of your Java-based persistence layer with features that allow you to generate JPA entities from database tables, explore schema, validate queries, and more. ",
-  "version": "0.0.1",
+  "displayName": "JPA Power Tools",
+  "description": "Browse PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, Db2 and other JDBC databases and generate JPA entities and Spring Data repositories from their tables.",
+  "version": "0.1.0",
   "engines": {
-    "vscode": "^1.54.0"
+    "vscode": "^1.93.0"
   },
   "categories": [
+    "Programming Languages",
+    "Snippets",
     "Other"
   ],
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "jpaPowertools",
+          "title": "JPA Power Tools",
+          "icon": "media/activitybar.svg"
+        }
+      ]
+    },
+    "views": {
+      "jpaPowertools": [
+        {
+          "id": "jpaPowertools.explorer",
+          "name": "Databases",
+          "icon": "media/activitybar.svg",
+          "contextualTitle": "JPA Power Tools"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "jpaPowertools.explorer",
+        "contents": "Connect to a database to browse its tables and generate JPA entities.\n[Add Connection](command:jpaPowertools.addConnection)\n[Import from Spring Config](command:jpaPowertools.importSpringDatasource)\nSupports PostgreSQL, MySQL, MariaDB, SQL Server and Oracle out of the box, plus Db2, H2, HSQLDB, Derby, SQLite, Firebird and any JDBC driver with Java 11+."
+      }
+    ],
     "commands": [
       {
-        "command": "jpa-powertools.helloWorld",
-        "title": "Hello World"
+        "command": "jpaPowertools.addConnection",
+        "title": "Add Connection…",
+        "category": "JPA Power Tools",
+        "icon": "$(add)"
+      },
+      {
+        "command": "jpaPowertools.importSpringDatasource",
+        "title": "Import Connection from Spring Config…",
+        "category": "JPA Power Tools",
+        "icon": "$(file-symlink-file)"
+      },
+      {
+        "command": "jpaPowertools.editConnection",
+        "title": "Edit Connection…",
+        "category": "JPA Power Tools",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "jpaPowertools.deleteConnection",
+        "title": "Delete Connection",
+        "category": "JPA Power Tools",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "jpaPowertools.refresh",
+        "title": "Refresh",
+        "category": "JPA Power Tools",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "jpaPowertools.disconnect",
+        "title": "Disconnect",
+        "category": "JPA Power Tools",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "jpaPowertools.copyJdbcUrl",
+        "title": "Copy JDBC URL",
+        "category": "JPA Power Tools"
+      },
+      {
+        "command": "jpaPowertools.generateEntities",
+        "title": "Generate JPA Entities…",
+        "category": "JPA Power Tools",
+        "icon": "$(symbol-class)"
       }
-    ]
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "jpaPowertools.editConnection",
+          "when": "false"
+        },
+        {
+          "command": "jpaPowertools.deleteConnection",
+          "when": "false"
+        },
+        {
+          "command": "jpaPowertools.disconnect",
+          "when": "false"
+        },
+        {
+          "command": "jpaPowertools.copyJdbcUrl",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "jpaPowertools.addConnection",
+          "when": "view == jpaPowertools.explorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "jpaPowertools.refresh",
+          "when": "view == jpaPowertools.explorer",
+          "group": "navigation@2"
+        },
+        {
+          "command": "jpaPowertools.importSpringDatasource",
+          "when": "view == jpaPowertools.explorer",
+          "group": "more@1"
+        },
+        {
+          "command": "jpaPowertools.generateEntities",
+          "when": "view == jpaPowertools.explorer && jpaPowertools.hasConnections",
+          "group": "more@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "jpaPowertools.generateEntities",
+          "when": "view == jpaPowertools.explorer && viewItem =~ /^(connection|schema|table)/",
+          "group": "inline@1"
+        },
+        {
+          "command": "jpaPowertools.refresh",
+          "when": "view == jpaPowertools.explorer && viewItem =~ /^connection/",
+          "group": "inline@2"
+        },
+        {
+          "command": "jpaPowertools.generateEntities",
+          "when": "view == jpaPowertools.explorer && viewItem =~ /^(connection|schema|table)/",
+          "group": "1_generate@1"
+        },
+        {
+          "command": "jpaPowertools.refresh",
+          "when": "view == jpaPowertools.explorer && viewItem =~ /^connection/",
+          "group": "2_connection@1"
+        },
+        {
+          "command": "jpaPowertools.disconnect",
+          "when": "view == jpaPowertools.explorer && viewItem == connection.connected",
+          "group": "2_connection@2"
+        },
+        {
+          "command": "jpaPowertools.copyJdbcUrl",
+          "when": "view == jpaPowertools.explorer && viewItem =~ /^connection/",
+          "group": "2_connection@3"
+        },
+        {
+          "command": "jpaPowertools.editConnection",
+          "when": "view == jpaPowertools.explorer && viewItem =~ /^connection/",
+          "group": "3_manage@1"
+        },
+        {
+          "command": "jpaPowertools.deleteConnection",
+          "when": "view == jpaPowertools.explorer && viewItem =~ /^connection/",
+          "group": "3_manage@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "JPA Power Tools",
+      "properties": {
+        "jpaPowertools.javaHome": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "Java 11+ installation used for JDBC-based databases (Db2, H2, HSQLDB, Derby, SQLite, Firebird, generic JDBC). Defaults to `JAVA_HOME`, then `java` on the `PATH`."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src",
-    "test": "vscode-test"
+    "lint": "eslint src && node --check media/dom.js && node --check media/connection.js && node --check media/generator.js",
+    "test:unit": "npm run compile && mocha --ui tdd \"out/test/unit/**/*.test.js\"",
+    "test:db": "npm run compile && mocha --ui tdd --timeout 120000 \"out/test/db/**/*.test.js\"",
+    "test": "vscode-test",
+    "test:libs": "npm run compile && node scripts/fetch-test-libs.js",
+    "package": "vsce package"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.7",
-    "@types/node": "20.x",
+    "@types/mssql": "^9.1.11",
+    "@types/node": "^20.19.43",
+    "@types/oracledb": "^6.10.4",
+    "@types/pg": "^8.23.1",
     "@types/vscode": "^1.54.0",
     "@typescript-eslint/eslint-plugin": "^8.3.0",
     "@typescript-eslint/parser": "^8.3.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
     "eslint": "^9.9.1",
-    "typescript": "^5.5.4"
-  }
+    "mocha": "^10.8.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "mssql": "^11.0.2",
+    "mysql2": "^3.24.6",
+    "oracledb": "^6.10.0",
+    "pg": "^8.23.1",
+    "yaml": "^2.9.1"
+  },
+  "publisher": "izzyjere",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/izzyjere/jpa-powertools"
+  },
+  "keywords": [
+    "jpa",
+    "hibernate",
+    "spring data",
+    "entity",
+    "database",
+    "postgresql",
+    "mysql",
+    "oracle",
+    "sql server",
+    "db2",
+    "jdbc"
+  ]
 }

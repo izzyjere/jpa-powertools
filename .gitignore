@@ -3,3 +3,8 @@ dist
 node_modules
 .vscode-test/
 *.vsix
+
+# Database integration test artifacts
+test-db/lib/
+.vscode-test/
+*.vsix

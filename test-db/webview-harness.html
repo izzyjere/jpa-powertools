@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<!--
+  Dev harness: previews the extension's webviews in a normal browser with VS Code's dark theme variables
+  and a mock extension host built from the real compiled modules in out/.
+  Usage: npm run compile && python -m http.server 8765  (from the repo root), then open
+  http://localhost:8765/test-db/webview-harness.html?view=connection   (or ?view=generator)
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Webview harness</title>
+<style>
+  :root {
+    --vscode-font-family: "Segoe UI", system-ui, sans-serif; --vscode-font-size: 13px;
+    --vscode-editor-font-family: Consolas, "Courier New", monospace; --vscode-editor-font-size: 13px;
+    --vscode-foreground: #cccccc; --vscode-descriptionForeground: #9d9d9d; --vscode-errorForeground: #f48771;
+    --vscode-editor-background: #1f1f1f; --vscode-editorWidget-background: #202020; --vscode-widget-border: #313131;
+    --vscode-input-background: #313131; --vscode-input-foreground: #cccccc; --vscode-input-border: #3c3c3c;
+    --vscode-input-placeholderForeground: #989898; --vscode-focusBorder: #0078d4;
+    --vscode-dropdown-background: #313131; --vscode-dropdown-foreground: #cccccc; --vscode-dropdown-border: #3c3c3c;
+    --vscode-button-background: #0078d4; --vscode-button-foreground: #ffffff; --vscode-button-hoverBackground: #026ec1;
+    --vscode-button-secondaryBackground: #313131; --vscode-button-secondaryForeground: #cccccc; --vscode-button-secondaryHoverBackground: #3c3c3c;
+    --vscode-button-border: #ffffff12; --vscode-textLink-foreground: #4daafc; --vscode-textLink-activeForeground: #4daafc;
+    --vscode-list-hoverBackground: #2a2d2e; --vscode-list-activeSelectionBackground: #04395e; --vscode-list-activeSelectionForeground: #ffffff;
+    --vscode-list-inactiveSelectionBackground: #37373d; --vscode-badge-background: #616161; --vscode-badge-foreground: #f8f8f8;
+    --vscode-inputValidation-errorBorder: #be1100; --vscode-editorWarning-foreground: #cca700; --vscode-testing-iconPassed: #73c991;
+    --vscode-textCodeBlock-background: #2b2b2b; --vscode-sideBar-background: #181818; --vscode-panel-border: #2b2b2b;
+  }
+</style>
+<link rel="stylesheet" href="../media/webview.css">
+</head>
+<body>
+<div id="app" aria-busy="true"><div class="loading"><span class="spinner"></span> Loading…</div></div>
+<script>
+  // --- Minimal CommonJS loader for the compiled modules in out/
+  const cache = {};
+  function load(path) {
+    if (cache[path]) { return cache[path].exports; }
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', `../out/${path}.js`, false);
+    xhr.send();
+    const module = { exports: {} };
+    cache[path] = module;
+    const dir = path.split('/').slice(0, -1);
+    const req = (p) => {
+      if (!p.startsWith('.')) { return {}; }
+      const parts = [...dir];
+      for (const seg of p.split('/')) { if (seg === '..') { parts.pop(); } else if (seg !== '.') { parts.push(seg); } }
+      return load(parts.join('/'));
+    };
+    new Function('exports', 'require', 'module', xhr.responseText)(module.exports, req, module);
+    return module.exports;
+  }
+  const types = load('model/types');
+  const jdbcUrl = load('db/jdbcUrl');
+  const draftLib = load('model/connectionDraft');
+  const gen = load('codegen/entityGenerator');
+  const ui = load('codegen/uiOptions');
+
+  const view = new URLSearchParams(location.search).get('view') || 'connection';
+  const toWebview = (msg, delay = 0) => setTimeout(() => window.postMessage(msg, '*'), delay);
+  window.harnessLog = [];
+
+  // --- Mock hosts
+  function connectionHost(m) {
+    switch (m.type) {
+      case 'ready':
+        toWebview({ type: 'init', mode: 'create', draft: {}, password: '', hasSavedPassword: false, dialects: types.DIALECTS });
+        toWebview({ type: 'springSources', sources: [
+          { ...jdbcUrl.parseJdbcUrl('jdbc:postgresql://localhost:55432/shop'), url: 'jdbc:postgresql://localhost:55432/shop', user: 'postgres', password: 'secret', profile: '', file: 'src/main/resources/application.properties' },
+          { ...jdbcUrl.parseJdbcUrl('jdbc:mysql://prod-db:3306/shop'), url: 'jdbc:mysql://prod-db:3306/shop', user: 'app', profile: 'prod', file: 'src/main/resources/application-prod.yml' },
+        ] }, 400);
+        break;
+      case 'parseUrl': toWebview({ type: 'urlParsed', url: m.url, parsed: jdbcUrl.parseJdbcUrl(m.url) ?? null }); break;
+      case 'buildUrl': toWebview({ type: 'urlBuilt', url: jdbcUrl.buildJdbcUrl(draftLib.draftToConfig('x', m.draft)) }); break;
+      case 'browse': toWebview({ type: 'browsed', purpose: m.purpose, paths: m.purpose === 'driverJars' ? ['C:\\drivers\\vendor-jdbc-1.2.jar'] : ['C:\\data\\shop.sqlite'] }); break;
+      case 'test':
+      case 'save': {
+        const errors = draftLib.validateDraft(m.draft);
+        if (Object.keys(errors).length) { toWebview({ type: 'validation', errors }); break; }
+        if (m.type === 'test') {
+          toWebview({ type: 'busy', action: 'test' });
+          const ok = m.password === 'secret';
+          toWebview({ type: 'testResult', ok, message: ok ? 'Connected: PostgreSQL 16.4' : `Authentication failed for user "${m.draft.user}". Check the user name and password.` }, 900);
+        } else {
+          window.harnessLog.push({ saved: draftLib.draftToConfig('new', m.draft) });
+          document.title = 'SAVED';
+        }
+        break;
+      }
+    }
+  }
+
+  const col = (name, dataType, extra = {}) => ({ name, dataType, displayType: dataType, length: null, precision: null, scale: null, nullable: true, autoIncrement: false, unsigned: false, defaultValue: null, comment: null, ...extra });
+  const fk = (columns, referencedTable) => ({ name: `fk_${referencedTable}_${columns[0]}`, columns, referencedSchema: 'public', referencedTable, referencedColumns: ['id'] });
+  const TABLES = [
+    { schema: 'public', name: 'customers', kind: 'table', comment: 'People who buy things', columns: [col('id', 'int8', { nullable: false, autoIncrement: true }), col('email', 'varchar', { nullable: false, length: 255, comment: 'Login e-mail' }), col('version', 'int4', { nullable: false })], primaryKey: ['id'], foreignKeys: [], uniqueKeys: [{ name: 'uk', columns: ['email'] }] },
+    { schema: 'public', name: 'orders', kind: 'table', comment: null, columns: [col('id', 'int8', { nullable: false, autoIncrement: true }), col('customer_id', 'int8', { nullable: false }), col('status', 'order_status'), col('total', 'numeric', { precision: 12, scale: 2 })], primaryKey: ['id'], foreignKeys: [fk(['customer_id'], 'customers')], uniqueKeys: [] },
+    { schema: 'public', name: 'order_items', kind: 'table', comment: null, columns: [col('order_id', 'int8', { nullable: false }), col('line_no', 'int4', { nullable: false }), col('product_id', 'int4', { nullable: false })], primaryKey: ['order_id', 'line_no'], foreignKeys: [fk(['order_id'], 'orders'), fk(['product_id'], 'products')], uniqueKeys: [] },
+    { schema: 'public', name: 'products', kind: 'table', comment: null, columns: [col('id', 'int4', { nullable: false, autoIncrement: true }), col('sku', 'bpchar', { nullable: false, length: 12 }), col('price', 'numeric', { precision: 10, scale: 2 })], primaryKey: ['id'], foreignKeys: [], uniqueKeys: [] },
+    { schema: 'public', name: 'audit_log', kind: 'table', comment: null, columns: [col('at', 'timestamptz', { nullable: false }), col('action', 'text', { nullable: false })], primaryKey: [], foreignKeys: [], uniqueKeys: [] },
+    { schema: 'public', name: 'order_summary', kind: 'view', comment: null, columns: [col('id', 'int8'), col('email', 'varchar')], primaryKey: [], foreignKeys: [], uniqueKeys: [] },
+    ...Array.from({ length: 14 }, (_, i) => ({ schema: 'public', name: `lookup_${String(i + 1).padStart(2, '0')}`, kind: 'table', comment: null, columns: [col('id', 'int4', { nullable: false })], primaryKey: ['id'], foreignKeys: [], uniqueKeys: [] })),
+  ];
+  const ROOTS = [
+    { fsPath: 'C:\\work\\shop\\src\\main\\java', label: 'src/main/java', basePackage: 'com.acme.shop', entityPackage: 'com.acme.shop.entity', repositoryPackage: 'com.acme.shop.repository' },
+    { fsPath: 'C:\\work\\shop\\admin\\src\\main\\java', label: 'admin/src/main/java', basePackage: 'com.acme.admin', entityPackage: 'com.acme.admin.domain', repositoryPackage: 'com.acme.admin.repository' },
+  ];
+  const EXISTING = new Set(['com/acme/shop/entity/Customer.java']);
+
+  function generatorHost(m) {
+    switch (m.type) {
+      case 'ready':
+        toWebview({
+          type: 'init', connection: 'Shop (Postgres)', schema: 'public', defaultSchema: 'public',
+          tables: TABLES.map(t => ({ name: t.name, kind: t.kind, comment: t.comment, columns: t.columns.length, hasPk: t.primaryKey.length > 0 })),
+          references: Object.fromEntries(TABLES.map(t => [t.name, t.foreignKeys.map(f => f.referencedTable)])),
+          preselected: ['orders'], roots: ROOTS,
+          detected: { persistenceApi: 'jakarta', lombok: true, springDataJpa: true },
+          options: { sourceRoot: ROOTS[0].fsPath, entityPackage: ROOTS[0].entityPackage, repositoryPackage: ROOTS[0].repositoryPackage, generateRepositories: true, persistenceApi: 'jakarta', lombok: true, relationships: true, inverseRelationships: false, versionColumn: true, stripTablePrefixes: '', alwaysSchema: false },
+        }, 300);
+        break;
+      case 'preview': {
+        const names = m.focus && !m.tables.includes(m.focus) ? [...m.tables, m.focus] : m.tables;
+        const r = gen.generateEntities(TABLES.filter(t => names.includes(t.name)), ui.toGeneratorOptions(m.options, 'postgresql', 'public'));
+        const selected = r.files.filter(f => m.tables.includes(f.tableName));
+        toWebview({
+          type: 'preview', seq: m.seq, errors: ui.validateOptions(m.options), warnings: r.warnings, focus: m.focus,
+          files: selected.map(f => ({ path: f.relativePath, className: f.className, kind: f.kind, table: f.tableName, exists: EXISTING.has(f.relativePath) })),
+          focusFiles: r.files.filter(f => f.tableName === m.focus).map(f => ({ path: f.relativePath, className: f.className, kind: f.kind, content: f.content })),
+        }, 60);
+        break;
+      }
+      case 'browseRoot':
+        toWebview({ type: 'rootAdded', root: { fsPath: 'D:\\other\\src', label: 'D:/other/src', basePackage: 'org.other', entityPackage: 'org.other.model', repositoryPackage: 'org.other.repository' } });
+        break;
+      case 'generate': {
+        const r = gen.generateEntities(TABLES.filter(t => m.tables.includes(t.name)), ui.toGeneratorOptions(m.options, 'postgresql', 'public'));
+        window.harnessLog.push({ generated: r.files.map(f => f.relativePath) });
+        toWebview({ type: 'generated', written: r.files.map(f => `${m.options.sourceRoot}\\${f.relativePath.replace(/\//g, '\\')}`), overwritten: 1, skipped: 0, root: m.options.sourceRoot }, 700);
+        break;
+      }
+      case 'openFile': window.harnessLog.push({ open: m.path }); break;
+    }
+  }
+
+  window.acquireVsCodeApi = () => ({
+    postMessage: (m) => { window.harnessLog.push({ toHost: m.type }); (view === 'connection' ? connectionHost : generatorHost)(m); },
+    getState: () => undefined, setState: () => undefined,
+  });
+  for (const src of ['../media/dom.js', `../media/${view}.js`]) {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = false;
+    document.body.appendChild(s);
+  }
+</script>
+</body>
+</html>

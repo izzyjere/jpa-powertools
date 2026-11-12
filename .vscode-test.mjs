@@ -1,5 +1,7 @@
 import { defineConfig } from '@vscode/test-cli';
 
 export default defineConfig({
-	files: 'out/test/**/*.test.js',
+	files: 'out/test/integration/**/*.test.js',
+	workspaceFolder: './src/test/fixtures/spring-app',
+	mocha: { ui: 'tdd', timeout: 60000 },
 });
