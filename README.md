@@ -104,19 +104,6 @@ npm run test:dbs:down
 
 `npm run demo:record` re-records the demo video in `docs/media` (Windows, ffmpeg and the test databases required; see [scripts/record-demo.js](scripts/record-demo.js)). `test-db/webview-harness.html` previews the webviews in a normal browser, with VS Code theme variables and a mock extension host (instructions are in the file).
 
-## Continuous integration and releases
-
-- **CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs on every push and pull request:
-  - Lint, unit tests and the VS Code integration tests on Linux, Windows and macOS.
-  - A database job that starts PostgreSQL, MySQL, MariaDB, SQL Server and Oracle, then runs the cross-database and Hibernate checks. Db2 is added on the weekly scheduled run, or on request through *Run workflow*.
-  - Builds the `.vsix` as a downloadable artifact.
-- **Releases** ([.github/workflows/release.yml](.github/workflows/release.yml)) publish to the Visual Studio Marketplace when a version tag is pushed:
-  1. Bump `version` in `package.json` and add a `## <version>` section to `CHANGELOG.md`.
-  2. `git tag v<version> && git push origin v<version>`
-  3. The workflow checks that the tag matches `package.json`, runs the tests, publishes to the Marketplace (and to Open VSX when `OVSX_PAT` is set), and creates a GitHub release with the `.vsix` and the changelog notes.
-
-  One-time setup: create the `izzyjere` publisher on the [Marketplace](https://marketplace.visualstudio.com/manage), then add a `marketplace` environment in the repository settings with a `VSCE_PAT` secret: an Azure DevOps personal access token with the **Marketplace → Manage** scope and *All accessible organizations*. `OVSX_PAT` (an [Open VSX](https://open-vsx.org) token) is optional. Adding required reviewers to the environment gives you a manual approval step before anything is published. Run the workflow manually with *dry run* to build and test a release package without publishing.
-
 ## Roadmap
 
 These items from the original proposal aren't built yet:
