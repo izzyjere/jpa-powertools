@@ -9,3 +9,5 @@ test-db/lib/
 .vscode-test/
 *.vsix
 .demo/
+*.class
+classes/
