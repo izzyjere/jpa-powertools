@@ -126,7 +126,7 @@ jobs:
       - name: Package extension
         run: npm run package -- --out jpa-powertools.vsix
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: jpa-powertools-vsix
           path: jpa-powertools.vsix
