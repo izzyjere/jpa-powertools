@@ -520,6 +520,34 @@ export interface AttributeDecl {
   /** Fully qualified name of the element type when resolvable from imports/package. */
   elementTypeFqn?: string;
   offset: number;
+  /** Annotations on the field: simple name → attribute → value (see {@link annotationMap}). */
+  annotations?: AnnotationMap;
+}
+
+/**
+ * Annotation values by simple annotation name and attribute name. String literals are decoded
+ * (`@Column(name = "x")` → `x`); anything else is the raw source text (`GenerationType.IDENTITY`, `false`,
+ * `{@JoinColumn(name = "a"), …}`). A marker annotation maps to an empty object.
+ */
+export type AnnotationMap = Record<string, Record<string, string>>;
+
+function annotationMap(tokens: JavaToken[], annotations: Array<{ name: string; args?: AnnotationArgs }>): AnnotationMap {
+  const out: AnnotationMap = {};
+  for (const a of annotations) {
+    const values: Record<string, string> = {};
+    for (const [key, [s, e]] of a.args?.args ?? []) {
+      const str = stringExpression(tokens, s, e);
+      values[key] = str ? str.value : tokens.slice(s, e).reduce(
+        (acc, t, i, arr) => acc + (i > 0 && /[\w"]$/.test(arr[i - 1].text) && /^[\w"@]/.test(t.text) ? ' ' : '') + t.text, '');
+    }
+    out[a.name] = values;
+  }
+  return out;
+}
+
+/** Reads `name = "…"` values of nested annotations in raw annotation text, e.g. `joinColumns = @JoinColumn(name = "a")`. */
+export function nestedNames(raw: string | undefined): string[] {
+  return raw ? [...raw.matchAll(/\bname\s*=\s*"([^"]*)"/g)].map(m => m[1]) : [];
 }
 
 export interface ClassDecl {
@@ -536,6 +564,9 @@ export interface ClassDecl {
   isInterface: boolean;
   bodyStart: number;
   bodyEnd: number;
+  /** Class-level annotations (`@Table`, `@Inheritance`, …). */
+  annotations?: AnnotationMap;
+  isEnum?: boolean;
 }
 
 const COLLECTION_TYPES = new Set(['List', 'Set', 'Collection', 'SortedSet', 'Iterable', 'ArrayList', 'HashSet', 'LinkedHashSet', 'TreeSet', 'LinkedList']);
@@ -641,6 +672,8 @@ export function parseJavaClasses(src: string, tokens = tokenizeJava(src)): Class
     const decl: ClassDecl = {
       name: nameTok.text, packageName, kind, entityName, superClass, attributes: [], offset: nameTok.start,
       repositoryOf, isInterface: keyword === 'interface', bodyStart: tokens[bodyOpen]?.start ?? src.length, bodyEnd: tokens[bodyClose]?.end ?? src.length,
+      annotations: annotationMap(tokens, annotations),
+      isEnum: keyword === 'enum' || undefined,
     };
     classes.push(decl);
     if (keyword === 'class' || keyword === 'record') {
@@ -782,7 +815,10 @@ export function parseJavaClasses(src: string, tokens = tokenizeJava(src)): Class
           collection = true;
         }
         const fqn = resolveFqn(elementType) ?? (packageName ? `${packageName}.${elementType}` : elementType);
-        decl.attributes.push({ name: nameTok.text, type, elementType, collection, elementTypeFqn: fqn, offset: nameTok.start });
+        decl.attributes.push({
+          name: nameTok.text, type, elementType, collection, elementTypeFqn: fqn, offset: nameTok.start,
+          annotations: annotationMap(tokens, annotations),
+        });
       }
       i = j + 1;
     }

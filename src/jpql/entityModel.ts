@@ -1,4 +1,4 @@
-import { AttributeDecl, ClassDecl } from './javaSource';
+import { AnnotationMap, AttributeDecl, ClassDecl } from './javaSource';
 
 export interface ModelAttribute extends AttributeDecl {
   /** Class that declares the attribute (may be a mapped superclass). */
@@ -16,6 +16,8 @@ export interface ModelClass {
   attributes: Map<string, ModelAttribute>;
   /** True when a superclass is outside the workspace, so inherited attributes are unknown. */
   incomplete: boolean;
+  /** Class-level annotations, e.g. `@Table(name = …)`. */
+  annotations: AnnotationMap;
 }
 
 /** Types that are definitely basic (not navigable) in JPQL paths. */
@@ -33,6 +35,7 @@ export class EntityModel {
   private readonly bySimple = new Map<string, ModelClass[]>();
   /** Non-JPA types declared in the workspace (enums, DTOs…): known to be non-navigable. */
   private readonly otherTypes = new Set<string>();
+  private readonly enumTypes = new Set<string>();
 
   constructor(files: Array<{ file: string; classes: ClassDecl[] }>) {
     const decls: Array<{ file: string; decl: ClassDecl }> = [];
@@ -41,6 +44,10 @@ export class EntityModel {
         if (decl.kind === 'other') {
           this.otherTypes.add(decl.packageName ? `${decl.packageName}.${decl.name}` : decl.name);
           this.otherTypes.add(decl.name);
+          if (decl.isEnum) {
+            this.enumTypes.add(decl.name);
+            this.enumTypes.add(decl.packageName ? `${decl.packageName}.${decl.name}` : decl.name);
+          }
         } else {
           decls.push({ file: f.file, decl });
         }
@@ -49,7 +56,7 @@ export class EntityModel {
     for (const { file, decl } of decls) {
       const cls: ModelClass = {
         name: decl.name, fqn: decl.packageName ? `${decl.packageName}.${decl.name}` : decl.name, kind: decl.kind,
-        entityName: decl.entityName, file, offset: decl.offset, attributes: new Map(), incomplete: false,
+        entityName: decl.entityName, file, offset: decl.offset, attributes: new Map(), incomplete: false, annotations: decl.annotations ?? {},
       };
       this.classes.push(cls);
       this.byFqn.set(cls.fqn, cls);
@@ -118,6 +125,11 @@ export class EntityModel {
       return this.byFqn.get(attr.elementTypeFqn);
     }
     return this.lookupClass(attr.elementType);
+  }
+
+  /** True when the attribute's (element) type is an enum declared in the workspace. */
+  isEnum(attr: AttributeDecl): boolean {
+    return this.enumTypes.has(attr.elementTypeFqn ?? '') || this.enumTypes.has(attr.elementType);
   }
 
   /** True when the attribute's type is known not to have attributes (basic, enum, workspace non-JPA type). */

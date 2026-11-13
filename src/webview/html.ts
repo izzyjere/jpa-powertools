@@ -5,10 +5,14 @@ export function nonce(): string {
   return randomBytes(16).toString('base64').replace(/[^A-Za-z0-9]/g, '');
 }
 
-/** Builds a webview document that loads `media/<script>.js` and the shared stylesheet under a strict CSP. */
-export function webviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, title: string, script: string): string {
+/**
+ * Builds a webview document that loads `media/<script>.js` (after `dom.js` and any `extraScripts`)
+ * and the shared stylesheet under a strict CSP.
+ */
+export function webviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, title: string, script: string, extraScripts: string[] = []): string {
   const n = nonce();
   const media = (f: string) => webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', f));
+  const scripts = ['dom.js', ...extraScripts, script].map(s => `<script nonce="${n}" src="${media(s)}"></script>`).join('\n');
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,8 +24,7 @@ export function webviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, t
 </head>
 <body>
 <div id="app" aria-busy="true"><div class="loading"><span class="spinner"></span> Loading…</div></div>
-<script nonce="${n}" src="${media('dom.js')}"></script>
-<script nonce="${n}" src="${media(script)}"></script>
+${scripts}
 </body>
 </html>`;
 }

@@ -194,7 +194,7 @@ export function mapOracleNumber(precision: number | null, scale: number | null):
     if (precision === 1) {
       return T('Boolean');
     }
-    if (precision <= 9) {
+    if (precision <= 10) { // Hibernate itself maps Integer to NUMBER(10)
       return T('Integer');
     }
     if (precision <= 19) { // Hibernate itself maps Long to NUMBER(19)

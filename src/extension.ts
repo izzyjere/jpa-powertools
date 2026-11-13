@@ -3,12 +3,14 @@ import { ConnectionStore } from './connections/ConnectionStore';
 import { JdbcEnvironment } from './connections/JdbcEnvironment';
 import { SessionManager } from './connections/SessionManager';
 import { buildJdbcUrl } from './db/jdbcUrl';
+import { ErdEditorProvider, openDiagram, slug } from './erd/ErdEditorProvider';
+import { emptyDocument, fromEntityModel, fromTables } from './erd/erdModel';
 import { JpqlService } from './jpql/JpqlService';
-import { ConnectionConfig } from './model/types';
+import { ConnectionConfig, DbKind } from './model/types';
 import { findSpringDatasources } from './project/projectScanner';
 import { ConnectionNode, DatabaseExplorer, ExplorerNode, SchemaNode, TableNode } from './views/DatabaseExplorer';
 import { ConnectionPanel } from './webview/ConnectionPanel';
-import { GeneratorPanel } from './webview/GeneratorPanel';
+import { connectionSource, GeneratorPanel } from './webview/GeneratorPanel';
 
 /** Public API returned from `activate`, used by the integration tests. */
 export interface JpaPowerToolsApi {
@@ -163,42 +165,103 @@ export function activate(context: vscode.ExtensionContext): JpaPowerToolsApi {
 
     vscode.commands.registerCommand('jpaPowertools.generateEntities', async (node?: ExplorerNode, nodes?: ExplorerNode[]) => {
       try {
-        await openGenerator(node, nodes);
+        const target = await schemaTarget(node, nodes);
+        if (target) {
+          GeneratorPanel.show(context, connectionSource(sessions, target.config, target.schema), target.tables);
+        }
       } catch (err) {
         showError(err);
       }
     }),
+
+    vscode.window.registerCustomEditorProvider(ErdEditorProvider.viewType, new ErdEditorProvider(context, jpql, store, sessions), {
+      webviewOptions: { retainContextWhenHidden: true },
+    }),
+
+    vscode.commands.registerCommand('jpaPowertools.erdFromEntities', async () => {
+      try {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: 'Reading JPA entities' }, () => jpql.index.whenReady());
+        const model = jpql.index.model;
+        if (!model.entities().length) {
+          const choice = await vscode.window.showInformationMessage(
+            'No @Entity classes were found in this workspace.',
+            'Diagram a Database Instead', 'New Empty Diagram',
+          );
+          if (choice === 'New Empty Diagram') {
+            await vscode.commands.executeCommand('jpaPowertools.newErd');
+          } else if (choice) {
+            await vscode.commands.executeCommand('jpaPowertools.erdFromDatabase');
+          }
+          return;
+        }
+        // Use the Spring datasource's database for types and DDL, when there is one.
+        const found = (await findSpringDatasources().catch(() => []))[0]?.kind;
+        const kind: DbKind = found && found !== 'jdbc' ? found : 'postgresql';
+        const name = `${vscode.workspace.name ?? 'Workspace'} entities`;
+        await openDiagram(fromEntityModel(model, name, kind), 'entities.erd.json');
+      } catch (err) {
+        showError(err);
+      }
+    }),
+
+    vscode.commands.registerCommand('jpaPowertools.erdFromDatabase', async (node?: ExplorerNode, nodes?: ExplorerNode[]) => {
+      try {
+        const target = await schemaTarget(node, nodes);
+        if (!target) {
+          return;
+        }
+        const { config, schema } = target;
+        const tables = await vscode.window.withProgress(
+          { location: vscode.ProgressLocation.Notification, title: `Reading ${config.name}${schema ? ` · ${schema}` : ''}` },
+          async () => (await sessions.get(config)).loadTables(schema, target.tables.length ? target.tables : undefined),
+        );
+        if (!tables.length) {
+          vscode.window.showInformationMessage(`${schema || config.name} has no tables to diagram.`);
+          return;
+        }
+        const name = schema ? `${config.name} · ${schema}` : config.name;
+        const doc = fromTables(tables, config.kind, name, { type: 'database', connectionId: config.id, connection: config.name, schema });
+        await openDiagram(doc, `${slug(config.name)}${schema ? `-${slug(schema)}` : ''}.erd.json`);
+      } catch (err) {
+        showError(err);
+      }
+    }),
+
+    vscode.commands.registerCommand('jpaPowertools.newErd', async () => {
+      let name = 'diagram';
+      const folder = vscode.workspace.workspaceFolders?.[0];
+      for (let i = 2; folder; i++) {
+        try {
+          await vscode.workspace.fs.stat(vscode.Uri.joinPath(folder.uri, 'erd', `${name}.erd.json`));
+          name = `diagram-${i}`;
+        } catch {
+          break;
+        }
+      }
+      await openDiagram(emptyDocument('New diagram'), `${name}.erd.json`);
+    }),
   );
 
-  async function openGenerator(node?: ExplorerNode, nodes?: ExplorerNode[]) {
-    // Multi-selection in the tree: generate the selected tables of one schema.
+  /** Connection, schema and (optionally) tables from tree nodes, or asked for when run from the Command Palette. */
+  async function schemaTarget(node?: ExplorerNode, nodes?: ExplorerNode[]): Promise<{ config: ConnectionConfig; schema: string; tables: string[] } | undefined> {
     const selection = (nodes && nodes.length ? nodes : node ? [node] : [...view.selection]);
     const tables = selection.filter((n): n is TableNode => n.type === 'table');
     if (tables.length) {
       const first = tables[0];
       const sameSchema = tables.filter(t => t.config.id === first.config.id && t.table.schema === first.table.schema);
-      GeneratorPanel.show(context, sessions, first.config, first.table.schema, sameSchema.map(t => t.table.name));
-      return;
+      return { config: first.config, schema: first.table.schema, tables: sameSchema.map(t => t.table.name) };
     }
     const target = selection[0];
     if (target?.type === 'schema') {
-      GeneratorPanel.show(context, sessions, (target as SchemaNode).config, (target as SchemaNode).schema, []);
-      return;
+      return { config: (target as SchemaNode).config, schema: (target as SchemaNode).schema, tables: [] };
     }
     const config = target?.type === 'connection' ? (target as ConnectionNode).config : await pickConnection();
     if (!config) {
-      return;
+      return undefined;
     }
     const schemas = await explorer.schemas(config);
-    let schema: string | undefined;
-    if (schemas.length <= 1) {
-      schema = schemas[0] ?? '';
-    } else {
-      schema = await vscode.window.showQuickPick(schemas, { placeHolder: `Choose a schema in ${config.name}` });
-    }
-    if (schema !== undefined) {
-      GeneratorPanel.show(context, sessions, config, schema, []);
-    }
+    const schema = schemas.length <= 1 ? schemas[0] ?? '' : await vscode.window.showQuickPick(schemas, { placeHolder: `Choose a schema in ${config.name}` });
+    return schema === undefined ? undefined : { config, schema, tables: [] };
   }
 
   return { store, sessions, explorer, view, jpql };

@@ -1,8 +1,8 @@
 {
   "name": "jpa-powertools",
   "displayName": "JPA Power Tools",
-  "description": "Browse PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, Db2 and other JDBC databases, generate JPA entities and Spring Data repositories, and write JPQL with validation, completion and navigation.",
-  "version": "1.0.0",
+  "description": "Browse PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, Db2 and other JDBC databases, generate JPA entities and Spring Data repositories, draw ER diagrams from entities or tables (and generate code and SQL from them), and write JPQL with validation, completion and navigation.",
+  "version": "1.1.0",
   "engines": {
     "vscode": "^1.93.0"
   },
@@ -99,6 +99,23 @@
         "command": "jpaPowertools.convertToQuery",
         "title": "Convert Derived Query to @Query",
         "category": "JPA Power Tools"
+      },
+      {
+        "command": "jpaPowertools.erdFromEntities",
+        "title": "Open ER Diagram from Entities",
+        "category": "JPA Power Tools",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "jpaPowertools.erdFromDatabase",
+        "title": "Open ER Diagram…",
+        "category": "JPA Power Tools",
+        "icon": "$(type-hierarchy-sub)"
+      },
+      {
+        "command": "jpaPowertools.newErd",
+        "title": "New ER Diagram",
+        "category": "JPA Power Tools"
       }
     ],
     "menus": {
@@ -144,6 +161,16 @@
           "command": "jpaPowertools.generateEntities",
           "when": "view == jpaPowertools.explorer && jpaPowertools.hasConnections",
           "group": "more@2"
+        },
+        {
+          "command": "jpaPowertools.erdFromEntities",
+          "when": "view == jpaPowertools.explorer",
+          "group": "more@3"
+        },
+        {
+          "command": "jpaPowertools.newErd",
+          "when": "view == jpaPowertools.explorer",
+          "group": "more@4"
         }
       ],
       "view/item/context": [
@@ -186,6 +213,11 @@
           "command": "jpaPowertools.deleteConnection",
           "when": "view == jpaPowertools.explorer && viewItem =~ /^connection/",
           "group": "3_manage@2"
+        },
+        {
+          "command": "jpaPowertools.erdFromDatabase",
+          "when": "view == jpaPowertools.explorer && viewItem =~ /^(connection|schema|table)/",
+          "group": "1_generate@2"
         }
       ],
       "editor/context": [
@@ -193,6 +225,11 @@
           "command": "jpaPowertools.generateJpql",
           "when": "editorLangId == java",
           "group": "1_modification@90"
+        },
+        {
+          "command": "jpaPowertools.erdFromEntities",
+          "when": "editorLangId == java",
+          "group": "1_modification@91"
         }
       ]
     },
@@ -211,14 +248,26 @@
           "markdownDescription": "Check JPQL in `@Query`, `@NamedQuery` and `createQuery(…)` against the `@Entity` classes in the workspace."
         }
       }
-    }
+    },
+    "customEditors": [
+      {
+        "viewType": "jpaPowertools.erd",
+        "displayName": "ER Diagram",
+        "selector": [
+          {
+            "filenamePattern": "*.erd.json"
+          }
+        ],
+        "priority": "default"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src && node --check media/dom.js && node --check media/connection.js && node --check media/generator.js",
+    "lint": "eslint src && node --check media/dom.js && node --check media/connection.js && node --check media/generator.js && node --check media/erd.js && node --check media/erd-layout.js",
     "test:unit": "npm run compile && mocha --ui tdd \"out/test/unit/**/*.test.js\"",
     "test:db": "npm run compile && mocha --ui tdd --timeout 120000 \"out/test/db/**/*.test.js\"",
     "test": "vscode-test",
@@ -239,7 +288,7 @@
     "@typescript-eslint/parser": "^8.3.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
-    "@vscode/vsce": "^3.9.2",
+    "@vscode/vsce": "^4.1.1",
     "eslint": "^9.9.1",
     "mocha": "^10.8.2",
     "typescript": "^5.9.3"
@@ -271,7 +320,10 @@
     "jdbc",
     "jpql",
     "hql",
-    "query"
+    "query",
+    "erd",
+    "er diagram",
+    "ddl"
   ],
   "icon": "media/icon.png",
   "galleryBanner": {

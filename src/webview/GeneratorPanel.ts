@@ -4,7 +4,7 @@ import { SessionManager } from '../connections/SessionManager';
 import { GeneratedFile, generateEntities } from '../codegen/entityGenerator';
 import { toGeneratorOptions, UiOptions, validateOptions } from '../codegen/uiOptions';
 import { friendlyError } from '../db/session';
-import { ConnectionConfig, TableInfo } from '../model/types';
+import { ConnectionConfig, DbKind, TableInfo } from '../model/types';
 
 export type { UiOptions };
 import { describeSourceRoot, ProjectInfo, scanProject, SourceRoot } from '../project/projectScanner';
@@ -19,6 +19,35 @@ export type FromWebview =
   | { type: 'retry' };
 
 const OPTIONS_KEY = 'jpaPowertools.generatorOptions';
+
+/** Where the generator gets its tables from: a live database connection or an ER diagram. */
+export interface TableSource {
+  /** Identifies the panel (one panel per source). */
+  key: string;
+  /** Shown in the panel header, e.g. the connection or diagram name. */
+  label: string;
+  schema: string;
+  kind: DbKind;
+  load(): Promise<TableInfo[]>;
+  /** Schema that does not need to be written into @Table. */
+  defaultSchema(): Promise<string>;
+  /** Class name overrides by `schema.table` (diagrams keep the names chosen there). */
+  classNames?: Record<string, string>;
+  describeError(err: unknown): string;
+}
+
+/** Tables of one schema of a database connection. */
+export function connectionSource(sessions: SessionManager, config: ConnectionConfig, schema: string): TableSource {
+  return {
+    key: `${config.id}|${schema}`,
+    label: config.name,
+    schema,
+    kind: config.kind,
+    load: () => sessions.get(config).then(s => s.loadTables(schema)),
+    defaultSchema: () => sessions.get(config).then(s => s.defaultSchema(schema)),
+    describeError: err => friendlyError(err, config),
+  };
+}
 
 /** Wizard for generating entities and repositories from a schema's tables. One panel per connection + schema. */
 export class GeneratorPanel {
@@ -35,14 +64,8 @@ export class GeneratorPanel {
   private metadata: Promise<TableInfo[]> | undefined;
   private project: ProjectInfo | undefined;
 
-  static show(
-    context: vscode.ExtensionContext,
-    sessions: SessionManager,
-    config: ConnectionConfig,
-    schema: string,
-    preselected: string[],
-  ): void {
-    const key = `${config.id}|${schema}`;
+  static show(context: vscode.ExtensionContext, source: TableSource, preselected: string[]): void {
+    const key = source.key;
     const existing = GeneratorPanel.open.get(key);
     if (existing) {
       existing.panel.reveal();
@@ -51,18 +74,16 @@ export class GeneratorPanel {
       }
       return;
     }
-    GeneratorPanel.open.set(key, new GeneratorPanel(context, sessions, config, schema, preselected, key));
+    GeneratorPanel.open.set(key, new GeneratorPanel(context, source, preselected, key));
   }
 
   private constructor(
     private readonly context: vscode.ExtensionContext,
-    private readonly sessions: SessionManager,
-    private readonly config: ConnectionConfig,
-    private readonly schema: string,
+    private readonly source: TableSource,
     private readonly preselected: string[],
     key: string,
   ) {
-    const title = schema ? `Generate Entities · ${schema}` : `Generate Entities · ${config.name}`;
+    const title = source.schema ? `Generate Entities · ${source.schema}` : `Generate Entities · ${source.label}`;
     this.panel = vscode.window.createWebviewPanel('jpaPowertools.generator', title, vscode.ViewColumn.Active, {
       enableScripts: true,
       retainContextWhenHidden: true,
@@ -83,7 +104,7 @@ export class GeneratorPanel {
 
   private loadMetadata(): Promise<TableInfo[]> {
     if (!this.metadata) {
-      this.metadata = this.sessions.get(this.config).then(s => s.loadTables(this.schema));
+      this.metadata = this.source.load();
       this.metadata.catch(() => (this.metadata = undefined));
     }
     return this.metadata;
@@ -124,10 +145,10 @@ export class GeneratorPanel {
     try {
       [tables, this.project] = await Promise.all([this.loadMetadata(), this.project ? Promise.resolve(this.project) : scanProject()]);
     } catch (err) {
-      this.post({ type: 'loadError', message: friendlyError(err, this.config) });
+      this.post({ type: 'loadError', message: this.source.describeError(err) });
       return;
     }
-    const session = await this.sessions.get(this.config);
+    const defaultSchema = await this.source.defaultSchema();
     const project = this.project;
     const saved = this.context.workspaceState.get<Partial<UiOptions>>(OPTIONS_KEY);
     const root: SourceRoot | undefined = project.roots.find(r => r.fsPath === saved?.sourceRoot) ?? project.roots[0];
@@ -167,9 +188,9 @@ export class GeneratorPanel {
 
     this.post({
       type: 'init',
-      connection: this.config.name,
-      schema: this.schema,
-      defaultSchema: session.defaultSchema(this.schema),
+      connection: this.source.label,
+      schema: this.source.schema,
+      defaultSchema,
       tables: tables.map(t => ({
         name: t.name,
         kind: t.kind,
@@ -193,8 +214,8 @@ export class GeneratorPanel {
     const all = await this.loadMetadata();
     const wanted = new Set(tableNames);
     const tables = all.filter(t => wanted.has(t.name));
-    const session = await this.sessions.get(this.config);
-    return generateEntities(tables, toGeneratorOptions(ui, this.config.kind, session.defaultSchema(this.schema)));
+    const options = toGeneratorOptions(ui, this.source.kind, await this.source.defaultSchema());
+    return generateEntities(tables, { ...options, classNames: this.source.classNames });
   }
 
   private async existing(root: string, files: GeneratedFile[]): Promise<Set<string>> {

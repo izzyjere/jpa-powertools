@@ -4,6 +4,10 @@ name: Release
 #   1. bump "version" in package.json and add a "## <version>" section to CHANGELOG.md
 #   2. git tag v<version> && git push origin v<version>
 # Run it manually with "dry run" to build and test the package without publishing.
+#
+# Marketplace authentication uses Trusted Publishing (GitHub OIDC), so no token is stored anywhere.
+# The publisher's Trusted Publishing policy (marketplace.visualstudio.com/manage → publisher → Trusted Publishing)
+# must name this repository, the workflow file "release.yml" and the environment "marketplace".
 
 on:
   push:
@@ -16,7 +20,8 @@ on:
         default: true
 
 permissions:
-  contents: write
+  contents: write # GitHub release
+  id-token: write # Marketplace Trusted Publishing (OIDC)
 
 concurrency:
   group: release
@@ -26,11 +31,10 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Holds the VSCE_PAT / OVSX_PAT secrets; add required reviewers to it for a manual approval gate.
+    # Part of the OIDC token the Trusted Publishing policy checks; add required reviewers to it for a manual approval gate.
     environment: marketplace
     env:
       PUBLISH: ${{ github.event_name == 'push' || inputs.dry-run == false }}
-      VSCE_PAT: ${{ secrets.VSCE_PAT }}
       OVSX_PAT: ${{ secrets.OVSX_PAT }}
     steps:
       - uses: actions/checkout@v4
@@ -84,12 +88,8 @@ jobs:
 
       - name: Publish to Visual Studio Marketplace
         if: env.PUBLISH == 'true'
-        run: |
-          if [ -z "$VSCE_PAT" ]; then
-            echo "::error::The VSCE_PAT secret is not set (Marketplace personal access token with Marketplace > Manage scope)."
-            exit 1
-          fi
-          npx vsce publish --packagePath "jpa-powertools-${{ steps.version.outputs.version }}.vsix" --pat "$VSCE_PAT"
+        # Trusted Publishing: vsce exchanges this job's GitHub OIDC token for a short-lived Marketplace credential.
+        run: npx vsce publish --packagePath "jpa-powertools-${{ steps.version.outputs.version }}.vsix" --oidc
 
       - name: Publish to Open VSX
         if: env.PUBLISH == 'true' && env.OVSX_PAT != ''

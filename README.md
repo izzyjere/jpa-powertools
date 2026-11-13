@@ -5,7 +5,7 @@
   <br><sub>▶ <a href="docs/media/demo.mp4">Watch the 1:30 demo</a></sub>
 </p>
 
-Browse your database from VS Code, generate JPA entities and Spring Data repositories from its tables, and write JPQL with validation, completion and navigation against your entity model.
+Browse your database from VS Code, generate JPA entities and Spring Data repositories from its tables, draw ER diagrams from entities or tables (and generate code and SQL back from them), and write JPQL with validation, completion and navigation against your entity model.
 
 ## Features
 
@@ -39,6 +39,26 @@ Works in `@Query` (Spring Data JPA; native queries are skipped), `@NamedQuery` a
 - **Generate JPQL Query…** (editor context menu / Command Palette): pick an entity, filters, fetch joins and ordering. Inside a repository interface it adds a complete `@Query` method; elsewhere it inserts the query string.
 
 The analyzer only reports what it is sure about, so valid HQL extensions (functions, enum literals, implicit aliases, `extract(… from …)`) never show false errors. It is tested against Hibernate 6's own query translator: every query Hibernate accepts in the test corpus passes cleanly, and every generated query is valid for Hibernate. Turn it off with `jpaPowertools.jpql.validation`.
+
+### ER diagrams
+
+Diagrams are `*.erd.json` files that open in an ER diagram editor, so they can be committed and reviewed like any other file. Saving, undo and redo work as in any VS Code document.
+
+- **Start from your code or your database**:
+  - **Open ER Diagram from Entities** reads your `@Entity` classes. It follows Spring Boot's default naming (`fullName` → `full_name`) unless `@Table`, `@Column`, `@JoinColumn` or `@JoinTable` say otherwise, and understands `@Embedded`, `@ElementCollection`, `@ManyToMany` join tables, `mappedBy`, enums, and single-table or joined inheritance.
+  - **Open ER Diagram…** on a connection, schema or selected tables in the database explorer diagrams those tables.
+  - **New ER Diagram** starts from a blank canvas.
+- **Two views of the same model**:
+  - **Entities:** classes, Java types, association and inverse fields; many-to-many join tables become a single line, and element collections become collection fields.
+  - **Tables:** columns and SQL types.
+- **Relationships** use crow's-foot notation and are labeled with their field or foreign-key column. Hover a table to highlight its relationships.
+- **Edit visually**: drag tables, auto-arrange them, and use the inspector to rename tables and columns, change types, toggle PK, NOT NULL, unique and auto-increment, add relationships, and pick colors. Double-click the canvas to add a table.
+- **Generate from the diagram**:
+  - **JPA entities and repositories** through the generator wizard, with its live preview.
+  - **SQL DDL** for any supported database, optionally saved as the next Flyway migration (`V3__create_….sql`).
+- **Sync** reloads the diagram from its entities or database while keeping your layout. **Export** saves it as SVG or a 2× PNG.
+
+The conversions are tested end to end. On PostgreSQL, MySQL, MariaDB, SQL Server and Oracle, the DDL generated from the test entities creates exactly the schema Hibernate 6 validates for those entities. Entities generated back from the diagram validate against the same tables, and introspecting the database rebuilds the same diagram.
 
 ## Supported databases
 
@@ -108,7 +128,7 @@ npm run test:dbs:down
 
 These items from the original proposal aren't built yet:
 
-- Migration script generation (Flyway/Liquibase)
+- Migration diffs (ALTER scripts between two versions of a diagram or database)
 - Entity-to-table drift checks for existing entity classes
 - Generating Java `enum`s from database enum types
 

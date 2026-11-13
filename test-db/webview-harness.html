@@ -144,13 +144,36 @@
     }
   }
 
+  // ER diagram: test-db/erd-sample.erd.json (or ?doc=<path relative to test-db>)
+  function erdHost(m) {
+    switch (m.type) {
+      case 'ready': {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', new URLSearchParams(location.search).get('doc') || 'erd-sample.erd.json', false);
+        xhr.send();
+        toWebview({
+          type: 'load', doc: JSON.parse(xhr.responseText),
+          meta: {
+            types: ['BIGINT', 'INTEGER', 'SMALLINT', 'DECIMAL', 'DOUBLE', 'REAL', 'BOOLEAN', 'VARCHAR', 'CHAR', 'TEXT', 'DATE', 'TIME', 'TIMESTAMP', 'TIMESTAMPTZ', 'UUID', 'BINARY', 'BLOB', 'JSON'],
+            dialects: types.DIALECTS.filter(d => d.kind !== 'jdbc').map(d => ({ kind: d.kind, label: d.label })),
+            colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'],
+            canSync: true, syncHint: 'Reload tables from Shop · public',
+          },
+        });
+        break;
+      }
+      case 'edit': window.harnessLog.push({ edit: m.label }); window.lastDoc = m.doc; break;
+      default: window.harnessLog.push({ action: m.type, format: m.format, size: m.data && m.data.length }); if (m.data) { window.lastExport = m.data; }
+    }
+  }
+
   window.acquireVsCodeApi = () => ({
-    postMessage: (m) => { window.harnessLog.push({ toHost: m.type }); (view === 'connection' ? connectionHost : generatorHost)(m); },
-    getState: () => undefined, setState: () => undefined,
+    postMessage: (m) => { window.harnessLog.push({ toHost: m.type }); ({ connection: connectionHost, generator: generatorHost, erd: erdHost })[view](m); },
+    getState: () => window.harnessState, setState: (s) => { window.harnessState = s; },
   });
-  for (const src of ['../media/dom.js', `../media/${view}.js`]) {
+  for (const src of ['../media/dom.js', ...(view === 'erd' ? ['../media/erd-layout.js'] : []), `../media/${view}.js`]) {
     const s = document.createElement('script');
-    s.src = src;
+    s.src = `${src}?v=${Date.now()}`; // always load the current file
     s.async = false;
     document.body.appendChild(s);
   }

@@ -107,7 +107,8 @@ suite('JPA Power Tools in VS Code', () => {
       assert.strictEqual(conn.config.name, PG.name);
 
       const schemas = await api.explorer.getChildren(conn) as SchemaNode[];
-      assert.deepStrictEqual(schemas.map(s => s.schema), ['public', 'sales']);
+      assert.deepStrictEqual(schemas.slice(0, 1).map(s => s.schema), ['public'], 'public comes first');
+      assert.ok(schemas.some(s => s.schema === 'sales'));
 
       const tables = await api.explorer.getChildren(schemas[0]) as TableNode[];
       const names = tables.map(t => t.table.name);

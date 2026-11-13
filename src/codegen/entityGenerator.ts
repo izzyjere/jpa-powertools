@@ -22,6 +22,8 @@ export interface GeneratorOptions {
   alwaysIncludeSchema?: boolean;
   /** Map a numeric/timestamp column named `version` to @Version. */
   versionColumn: boolean;
+  /** Entity class names by `schema.table`, overriding the names derived from table names. */
+  classNames?: Record<string, string>;
 }
 
 export const DEFAULT_OPTIONS: Omit<GeneratorOptions, 'kind'> = {
@@ -138,7 +140,7 @@ export function generateEntities(tables: TableInfo[], options: GeneratorOptions)
   const classNames = new Map<string, string>();
   const takenClasses = new Set<string>();
   for (const t of tables) {
-    let base = tableToClassName(t.name, options.stripTablePrefixes);
+    let base = options.classNames?.[tableKey(t.schema, t.name)] ?? tableToClassName(t.name, options.stripTablePrefixes);
     if (CLASHING_NAMES.has(base)) {
       base += 'Entity';
     }

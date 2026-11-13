@@ -70,7 +70,8 @@ up_mssql() {
 
 up_oracle() {
   start jpt-oracle -e ORACLE_PASSWORD=secret -e APP_USER=shop -e APP_USER_PASSWORD=secret -p 51521:1521 gvenzl/oracle-free:23-slim-faststart
-  wait_for Oracle 600 sh -c 'docker logs jpt-oracle 2>&1 | grep -q "DATABASE IS READY TO USE"'
+  # Query the database: container logs survive restarts, so a log line can be stale.
+  wait_for Oracle 600 sh -c 'echo "select 1 from dual;" | docker exec -i jpt-oracle sqlplus -s -L shop/secret@//localhost/FREEPDB1 | grep -q "^[[:space:]]*1$"'
   # Re-seeding: drop existing objects first so the script is idempotent.
   { echo 'whenever sqlerror continue'
     echo 'begin for t in (select table_name from user_tables) loop execute immediate '"'"'drop table "'"'"' || t.table_name || '"'"'" cascade constraints purge'"'"'; end loop; end;'
@@ -82,7 +83,7 @@ up_oracle() {
 
 up_db2() {
   start jpt-db2 --privileged -e LICENSE=accept -e DB2INST1_PASSWORD=secret -e DBNAME=SHOP -e SAMPLEDB=false -e ARCHIVE_LOGS=false -e AUTOCONFIG=false -p 55000:50000 icr.io/db2_community/db2:11.5.9.0
-  wait_for Db2 900 sh -c 'docker logs jpt-db2 2>&1 | grep -q "Setup has completed"'
+  wait_for Db2 900 docker exec jpt-db2 su - db2inst1 -c 'db2 connect to SHOP'
   local existing
   existing=$(docker exec jpt-db2 su - db2inst1 -c "db2 connect to SHOP >/dev/null && db2 -x \"select count(*) from syscat.tables where tabschema = 'DB2INST1' and tabname = 'CUSTOMERS'\"" | tr -d '[:space:]')
   if [ "$existing" = "1" ]; then

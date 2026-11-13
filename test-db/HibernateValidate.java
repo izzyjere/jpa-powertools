@@ -8,7 +8,7 @@ import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 
-/** Boots Hibernate with hbm2ddl=validate for every compiled entity. Args: url user password classesDir package */
+/** Boots Hibernate with hbm2ddl=validate for every compiled entity. Args: url user password classesDir package [snake] */
 public class HibernateValidate {
     public static void main(String[] args) throws Exception {
         String url = args[0], user = args[1], password = args[2];
@@ -20,6 +20,10 @@ public class HibernateValidate {
             .applySetting("hibernate.connection.password", password)
             .applySetting("hibernate.hbm2ddl.auto", "validate")
             .applySetting("hibernate.connection.pool_size", "1")
+            // "snake": Spring Boot's default physical naming (fullName -> full_name)
+            .applySetting("hibernate.physical_naming_strategy", args.length > 5 && "snake".equals(args[5])
+                ? "org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy"
+                : "org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl")
             .build();
         ClassLoader loader = new URLClassLoader(new URL[] { classes.toURI().toURL() }, HibernateValidate.class.getClassLoader());
         Thread.currentThread().setContextClassLoader(loader);

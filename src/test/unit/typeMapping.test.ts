@@ -52,7 +52,8 @@ suite('typeMapping', () => {
   test('Oracle NUMBER precision rules', () => {
     assert.strictEqual(mapOracleNumber(1, 0).javaType, 'Boolean');
     assert.strictEqual(mapOracleNumber(5, 0).javaType, 'Integer');
-    assert.strictEqual(mapOracleNumber(10, 0).javaType, 'Long');
+    assert.strictEqual(mapOracleNumber(10, 0).javaType, 'Integer');
+    assert.strictEqual(mapOracleNumber(11, 0).javaType, 'Long');
     assert.strictEqual(mapOracleNumber(19, 0).javaType, 'Long');
     assert.strictEqual(mapOracleNumber(30, 0).javaType, 'BigInteger');
     assert.strictEqual(mapOracleNumber(null, 0).javaType, 'Long');
