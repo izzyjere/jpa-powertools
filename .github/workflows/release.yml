@@ -106,7 +106,7 @@ jobs:
 
       - name: Upload package (dry run)
         if: env.PUBLISH != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jpa-powertools-${{ steps.version.outputs.version }}
           path: jpa-powertools-${{ steps.version.outputs.version }}.vsix
